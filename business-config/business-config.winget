@@ -1,0 +1,601 @@
+# Business-Config: Small Business Windows 11 Setup
+# Apply with:
+#   winget configure -f .\business-config\business-config.winget --accept-configuration-agreements --disable-interactivity
+#
+# Inspired by microsoft/WindowsDeveloperConfig. This config keeps only the
+# "calm environment" parts of that repo and replaces the dev-tools half with
+# small-business defaults: Microsoft 365 Apps for Business, Teams, OneDrive,
+# plus bloat removal and sensible OS defaults. No WSL, no reboot.
+
+$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2023/08/config/document.json
+metadata:
+  winget:
+    processor:
+      identifier: dscv3
+resources:
+
+# =============================================================================
+# Windows Terminal (kept, useful even on a non-dev box)
+# =============================================================================
+
+- type: Microsoft.WinGet/Package
+  name: Terminal
+  properties:
+    id: Microsoft.WindowsTerminal
+    source: winget
+    useLatest: true
+    installMode: silent
+  metadata:
+    description: Install Windows Terminal
+
+# =============================================================================
+# Theme: Dark
+# =============================================================================
+- type: Microsoft.DSC.Transitional/PowerShellScript
+  name: darkTheme
+  properties:
+    getScript: |
+      $regPath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+      $apps   = Get-ItemPropertyValue $regPath -Name AppsUseLightTheme    -EA SilentlyContinue
+      $system = Get-ItemPropertyValue $regPath -Name SystemUsesLightTheme -EA SilentlyContinue
+      return @{ AppsUseLightTheme = [int]$apps; SystemUsesLightTheme = [int]$system }
+    testScript: |
+      $regPath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+      $apps   = Get-ItemPropertyValue $regPath -Name AppsUseLightTheme    -EA SilentlyContinue
+      $system = Get-ItemPropertyValue $regPath -Name SystemUsesLightTheme -EA SilentlyContinue
+      return ($apps -eq 0 -and $system -eq 0)
+    setScript: |
+      $regPath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+      Set-ItemProperty -Path $regPath -Name "AppsUseLightTheme" -Value 0
+      Set-ItemProperty -Path $regPath -Name "SystemUsesLightTheme" -Value 0
+  metadata:
+    description: Sets dark theme
+
+# =============================================================================
+# File Explorer and Desktop
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: ShowFileExtensions
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: HideFileExt
+    valueData:
+      DWord: 0
+  metadata:
+    description: Show file extensions in Explorer
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: FullPathTitlebar
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: FullPathAddress
+    valueData:
+      DWord: 1
+  metadata:
+    description: Show full path in Explorer titlebar
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: OpenThisPC
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: LaunchTo
+    valueData:
+      DWord: 1
+  metadata:
+    description: Open File Explorer to This PC
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: FrequentFolders
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: ShowFrequent
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable frequent folders in Quick Access
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: FrequentFiles
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer
+    valueName: ShowRecent
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable frequent files in Quick Access
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: RecommendedFiles
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer
+    valueName: ShowCloudFilesInQuickAccess
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable recommended/cloud files in Quick Access
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: TipsOff
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: ShowSyncProviderNotifications
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable sync provider notifications (tips) in Explorer
+    securityContext: elevated
+
+# =============================================================================
+# Notifications and Focus
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: DoNotDisturb
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings
+    valueName: NOC_GLOBAL_SETTING_TOASTS_ENABLED
+    valueData:
+      DWord: 0
+  metadata:
+    description: Enable Do Not Disturb (disable all toast notifications)
+    securityContext: elevated
+
+# =============================================================================
+# Taskbar
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: TaskbarHideWidgets
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: TaskbarDa
+    valueData:
+      DWord: 0
+  metadata:
+    description: Hide Widgets button on the taskbar
+    securityContext: elevated
+
+# =============================================================================
+# Start and Search
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: WebSearchOff
+  properties:
+    keyPath: HKCU\SOFTWARE\Policies\Microsoft\Windows\Explorer
+    valueName: DisableSearchBoxSuggestions
+    valueData:
+      DWord: 1
+  metadata:
+    description: Disable web search in Start/Search
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: SearchHightlightOff
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\SearchSettings
+    valueName: IsDynamicSearchBoxEnabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable Show search highlights
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: StartRecommendations
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced
+    valueName: Start_IrisRecommendations
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable Start menu recommendations
+    securityContext: elevated
+
+# =============================================================================
+# Widgets service
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: WidgetServiceOff
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Dsh
+    valueName: AllowNewsAndInterests
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable Widget service
+    securityContext: elevated
+
+# =============================================================================
+# Edge policies
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: EdgeNewTab
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Edge
+    valueName: NewTabPageLocation
+    valueData:
+      String: about:blank
+  metadata:
+    description: Set Edge new tab to blank
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: EdgeOOBE
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Edge
+    valueName: HideFirstRunExperience
+    valueData:
+      DWord: 1
+  metadata:
+    description: Disable Edge first-run experience
+    securityContext: elevated
+
+# =============================================================================
+# Consumer experience and bloat blocking (policy + per-user content keys)
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: DisableConsumerFeatures
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent
+    valueName: DisableWindowsConsumerFeatures
+    valueData:
+      DWord: 1
+  metadata:
+    description: Block silent install of consumer apps (Candy Crush, Spotify stub, etc.)
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: DisableSoftLanding
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent
+    valueName: DisableSoftLanding
+    valueData:
+      DWord: 1
+  metadata:
+    description: Disable "soft landing" tips
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: DisableConsumerAccountStateContent
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent
+    valueName: DisableConsumerAccountStateContent
+    valueData:
+      DWord: 1
+  metadata:
+    description: Disable consumer account state notifications
+    securityContext: elevated
+
+- type: Microsoft.Windows/Registry
+  name: CdmStartSuggestions
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: SubscribedContent-338388Enabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable suggestions in Start menu
+
+- type: Microsoft.Windows/Registry
+  name: CdmSettingsSuggestions
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: SubscribedContent-338389Enabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable tips in Settings
+
+- type: Microsoft.Windows/Registry
+  name: CdmLockscreenSuggestions
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: SubscribedContent-310093Enabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable suggestions on lock screen
+
+- type: Microsoft.Windows/Registry
+  name: CdmSpotlightTips
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: SubscribedContent-338387Enabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable Windows Spotlight tips
+
+- type: Microsoft.Windows/Registry
+  name: CdmRotatingLockScreen
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: RotatingLockScreenOverlayEnabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable rotating ads on lock screen
+
+- type: Microsoft.Windows/Registry
+  name: CdmSilentApps
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: SilentInstalledAppsEnabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable silent install of suggested apps
+
+- type: Microsoft.Windows/Registry
+  name: CdmOemPreinstall
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: OemPreInstalledAppsEnabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable OEM preinstalled app suggestions
+
+- type: Microsoft.Windows/Registry
+  name: CdmPreInstall
+  properties:
+    keyPath: HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager
+    valueName: PreInstalledAppsEnabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable preinstalled app suggestions
+
+# =============================================================================
+# Disable Game Bar / Game DVR (no place on a business box)
+# =============================================================================
+
+- type: Microsoft.Windows/Registry
+  name: GameDvrOff
+  properties:
+    keyPath: HKCU\System\GameConfigStore
+    valueName: GameDVR_Enabled
+    valueData:
+      DWord: 0
+  metadata:
+    description: Disable Game DVR
+
+- type: Microsoft.Windows/Registry
+  name: GameBarPolicyOff
+  properties:
+    keyPath: HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR
+    valueName: AllowGameDVR
+    valueData:
+      DWord: 0
+  metadata:
+    description: Policy-disable Game DVR for all users
+    securityContext: elevated
+
+# =============================================================================
+# Remove inbox consumer Appx packages
+# Aggressive set: Xbox, Solitaire, Zune Music/Video, Bing News/Weather, Help,
+# Get Started, Mixed Reality, Your Phone, People, Feedback Hub, Mail/Calendar.
+# Idempotent: only removes packages that are present.
+# =============================================================================
+
+- type: Microsoft.DSC.Transitional/PowerShellScript
+  name: RemoveConsumerAppx
+  properties:
+    getScript: |
+      $targets = @(
+        'Microsoft.XboxGamingOverlay','Microsoft.XboxGameOverlay',
+        'Microsoft.XboxIdentityProvider','Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.GamingApp','Microsoft.Xbox.TCUI',
+        'Microsoft.ZuneMusic','Microsoft.ZuneVideo',
+        'Microsoft.BingNews','Microsoft.BingWeather',
+        'Microsoft.MicrosoftSolitaireCollection',
+        'Microsoft.GetHelp','Microsoft.Getstarted',
+        'Microsoft.MixedReality.Portal','Microsoft.YourPhone',
+        'Microsoft.People','Microsoft.WindowsFeedbackHub',
+        'microsoft.windowscommunicationsapps'
+      )
+      $installed    = $targets | Where-Object { Get-AppxPackage -Name $_ -AllUsers -EA SilentlyContinue }
+      $provisioned  = @(Get-AppxProvisionedPackage -Online -EA SilentlyContinue |
+                        Where-Object { $targets -contains $_.DisplayName } |
+                        Select-Object -ExpandProperty DisplayName -Unique)
+      return @{ installed = ($installed -join ','); provisioned = ($provisioned -join ',') }
+    testScript: |
+      $targets = @(
+        'Microsoft.XboxGamingOverlay','Microsoft.XboxGameOverlay',
+        'Microsoft.XboxIdentityProvider','Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.GamingApp','Microsoft.Xbox.TCUI',
+        'Microsoft.ZuneMusic','Microsoft.ZuneVideo',
+        'Microsoft.BingNews','Microsoft.BingWeather',
+        'Microsoft.MicrosoftSolitaireCollection',
+        'Microsoft.GetHelp','Microsoft.Getstarted',
+        'Microsoft.MixedReality.Portal','Microsoft.YourPhone',
+        'Microsoft.People','Microsoft.WindowsFeedbackHub',
+        'microsoft.windowscommunicationsapps'
+      )
+      $installedPresent   = @($targets | Where-Object { Get-AppxPackage -Name $_ -AllUsers -EA SilentlyContinue }).Count -gt 0
+      $provisionedPresent = @(Get-AppxProvisionedPackage -Online -EA SilentlyContinue |
+                               Where-Object { $targets -contains $_.DisplayName }).Count -gt 0
+      return (-not ($installedPresent -or $provisionedPresent))
+    setScript: |
+      $targets = @(
+        'Microsoft.XboxGamingOverlay','Microsoft.XboxGameOverlay',
+        'Microsoft.XboxIdentityProvider','Microsoft.XboxSpeechToTextOverlay',
+        'Microsoft.GamingApp','Microsoft.Xbox.TCUI',
+        'Microsoft.ZuneMusic','Microsoft.ZuneVideo',
+        'Microsoft.BingNews','Microsoft.BingWeather',
+        'Microsoft.MicrosoftSolitaireCollection',
+        'Microsoft.GetHelp','Microsoft.Getstarted',
+        'Microsoft.MixedReality.Portal','Microsoft.YourPhone',
+        'Microsoft.People','Microsoft.WindowsFeedbackHub',
+        'microsoft.windowscommunicationsapps'
+      )
+      foreach ($name in $targets) {
+        $pkgs = Get-AppxPackage -Name $name -AllUsers -EA SilentlyContinue
+        foreach ($p in $pkgs) {
+          Write-Host "Removing Appx: $($p.PackageFullName)"
+          try { Remove-AppxPackage -Package $p.PackageFullName -AllUsers -EA Stop }
+          catch { Write-Warning "Could not remove $($p.PackageFullName): $($_.Exception.Message)" }
+        }
+        $prov = Get-AppxProvisionedPackage -Online -EA SilentlyContinue |
+                Where-Object { $_.DisplayName -eq $name }
+        foreach ($pp in $prov) {
+          Write-Host "De-provisioning: $($pp.PackageName)"
+          try { Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -EA Stop | Out-Null }
+          catch { Write-Warning "Could not de-provision $($pp.PackageName): $($_.Exception.Message)" }
+        }
+      }
+  metadata:
+    description: Remove consumer inbox apps (idempotent, installed and provisioned)
+    securityContext: elevated
+
+# =============================================================================
+# Power: sensible defaults for an office PC
+# =============================================================================
+- type: Microsoft.DSC.Transitional/PowerShellScript
+  name: PowerPlan
+  properties:
+    getScript: |
+      function Get-PowerCfgValue {
+        param([string]$Sub, [string]$Setting, [string]$Bracket)
+        $out = powercfg /query SCHEME_CURRENT $Sub $Setting 2>$null
+        $line = ($out | Select-String "Current $Bracket Power Setting Index").Line
+        if (-not $line) { return $null }
+        if ($line -match '0x([0-9a-fA-F]+)') { return [int64]"0x$($matches[1])" }
+        return $null
+      }
+      return @{
+        standbyAc = Get-PowerCfgValue SUB_SLEEP STANDBYIDLE 'AC'
+        standbyDc = Get-PowerCfgValue SUB_SLEEP STANDBYIDLE 'DC'
+        monitorAc = Get-PowerCfgValue SUB_VIDEO VIDEOIDLE 'AC'
+        monitorDc = Get-PowerCfgValue SUB_VIDEO VIDEOIDLE 'DC'
+      }
+    testScript: |
+      function Get-PowerCfgValue {
+        param([string]$Sub, [string]$Setting, [string]$Bracket)
+        $out = powercfg /query SCHEME_CURRENT $Sub $Setting 2>$null
+        $line = ($out | Select-String "Current $Bracket Power Setting Index").Line
+        if (-not $line) { return $null }
+        if ($line -match '0x([0-9a-fA-F]+)') { return [int64]"0x$($matches[1])" }
+        return $null
+      }
+      $standbyAc = Get-PowerCfgValue SUB_SLEEP STANDBYIDLE 'AC'
+      $standbyDc = Get-PowerCfgValue SUB_SLEEP STANDBYIDLE 'DC'
+      $monitorAc = Get-PowerCfgValue SUB_VIDEO VIDEOIDLE 'AC'
+      $monitorDc = Get-PowerCfgValue SUB_VIDEO VIDEOIDLE 'DC'
+      return (
+        $standbyAc -eq 0       -and
+        $standbyDc -eq (30*60) -and
+        $monitorAc -eq (20*60) -and
+        $monitorDc -eq (10*60)
+      )
+    setScript: |
+      powercfg /change standby-timeout-ac 0
+      powercfg /change standby-timeout-dc 30
+      powercfg /change monitor-timeout-ac 20
+      powercfg /change monitor-timeout-dc 10
+  metadata:
+    description: Never sleep on AC, screen off 20 min AC / 10 min battery
+    securityContext: elevated
+
+# =============================================================================
+# BitLocker status check (warn only, never auto-enables)
+# =============================================================================
+- type: Microsoft.DSC.Transitional/PowerShellScript
+  name: BitLockerStatusCheck
+  properties:
+    getScript: |
+      try { return @{ protectionStatus = (Get-BitLockerVolume -MountPoint $env:SystemDrive -EA Stop).ProtectionStatus.ToString() } }
+      catch { return @{ protectionStatus = 'unknown' } }
+    testScript: |
+      try {
+        $v = Get-BitLockerVolume -MountPoint $env:SystemDrive -EA Stop
+        return ($v.ProtectionStatus -eq 'On')
+      } catch {
+        return $false
+      }
+    setScript: |
+      try {
+        $v = Get-BitLockerVolume -MountPoint $env:SystemDrive -EA Stop
+        if ($v.ProtectionStatus -ne 'On') {
+          Write-Warning "BitLocker is NOT enabled on $env:SystemDrive. Enable it in Settings > Privacy & security > Device encryption. This resource intentionally does not auto-enable BitLocker, so winget configure will keep reporting drift on this resource until BitLocker is on."
+        } else {
+          Write-Host "BitLocker is enabled on $env:SystemDrive."
+        }
+      } catch {
+        Write-Warning "Could not query BitLocker status: $($_.Exception.Message)"
+      }
+  metadata:
+    description: Warn (do not auto-enable) if BitLocker is off on system drive
+    securityContext: elevated
+
+# =============================================================================
+# Business app installs
+# =============================================================================
+
+- type: Microsoft.WinGet/Package
+  name: M365Apps
+  properties:
+    id: Microsoft.Office
+    source: winget
+    useLatest: true
+    installMode: silent
+  metadata:
+    description: Microsoft 365 Apps for Business (Word, Excel, PowerPoint, Outlook)
+    securityContext: elevated
+
+- type: Microsoft.WinGet/Package
+  name: Teams
+  properties:
+    id: Microsoft.Teams
+    source: winget
+    useLatest: true
+    installMode: silent
+  metadata:
+    description: Microsoft Teams (work or school)
+
+- type: Microsoft.WinGet/Package
+  name: OneDrive
+  properties:
+    id: Microsoft.OneDrive
+    source: winget
+    useLatest: true
+    installMode: silent
+  metadata:
+    description: OneDrive sync client (latest)
+    securityContext: elevated
+
+- type: Microsoft.WinGet/Package
+  name: AcrobatReader
+  properties:
+    id: Adobe.Acrobat.Reader.64-bit
+    source: winget
+    useLatest: true
+    installMode: silent
+  metadata:
+    description: Adobe Acrobat Reader
+    securityContext: elevated
+
+# =============================================================================
+# Install marker (used by Intune detection script)
+# =============================================================================
+- type: Microsoft.Windows/Registry
+  name: InstallMarker
+  properties:
+    keyPath: HKLM\SOFTWARE\WindowsBusinessConfig
+    valueName: Version
+    valueData:
+      String: "1.0.0"
+  metadata:
+    description: Marker key for Intune detection
+    securityContext: elevated
