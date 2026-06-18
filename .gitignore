@@ -14,3 +14,7 @@ Thumbs.db
 bin/
 obj/
 *.user
+
+# Release artifacts (regenerated from the .winget at release time)
+business-config/*.sha256
+
