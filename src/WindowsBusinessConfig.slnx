@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="../tests/WindowsBusinessConfig.Core.Tests/WindowsBusinessConfig.Core.Tests.csproj" />
+  <Project Path="wbcfg/wbcfg.csproj" />
+  <Project Path="WindowsBusinessConfig.Core/WindowsBusinessConfig.Core.csproj" />
+</Solution>

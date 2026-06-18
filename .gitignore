@@ -9,3 +9,8 @@ obj/
 ~$*
 Thumbs.db
 .DS_Store
+
+# .NET build outputs
+bin/
+obj/
+*.user
