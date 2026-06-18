@@ -9,3 +9,12 @@ obj/
 ~$*
 Thumbs.db
 .DS_Store
+
+# .NET build outputs
+bin/
+obj/
+*.user
+
+# Release artifacts (regenerated from the .winget at release time)
+business-config/*.sha256
+
